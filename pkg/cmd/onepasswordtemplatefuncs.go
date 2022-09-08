@@ -13,23 +13,13 @@ import (
 	"github.com/twpayne/chezmoi/v2/pkg/chezmoilog"
 )
 
-type withSessionTokenType bool
-
-const (
-	withSessionToken    withSessionTokenType = true
-	withoutSessionToken withSessionTokenType = false
-)
-
 var onepasswordVersionRx = regexp.MustCompile(`^(\d+\.\d+\.\d+\S*)`)
 
 type onepasswordConfig struct {
-	Command       string
-	Prompt        bool
-	version       *semver.Version
-	versionErr    error
-	environFunc   func() []string
-	outputCache   map[string][]byte
-	sessionTokens map[string]string
+	Command     string
+	version     *semver.Version
+	versionErr  error
+	outputCache map[string][]byte
 }
 
 type onepasswordArgs struct {
@@ -75,7 +65,7 @@ func (c *Config) onepasswordTemplateFunc(userArgs ...string) map[string]any {
 		panic(err)
 	}
 
-	output, err := c.onepasswordOutput(args, withSessionToken)
+	output, err := c.onepasswordOutput(args)
 	if err != nil {
 		panic(err)
 	}
@@ -160,7 +150,7 @@ func (c *Config) onepasswordDocumentTemplateFunc(userArgs ...string) string {
 		panic(err)
 	}
 
-	output, err := c.onepasswordOutput(args, withSessionToken)
+	output, err := c.onepasswordOutput(args)
 	if err != nil {
 		panic(err)
 	}
@@ -214,86 +204,13 @@ func (c *Config) onepasswordItemFieldsTemplateFunc(userArgs ...string) map[strin
 	}
 }
 
-// onepasswordGetOrRefreshSessionToken will return the current session token if
-// the token within the environment is still valid. Otherwise it will ask the
-// user to sign in and get the new token.
-func (c *Config) onepasswordGetOrRefreshSessionToken(args *onepasswordArgs) (string, error) {
-	if !c.Onepassword.Prompt {
-		return "", nil
-	}
-
-	// Check if there's already a valid session token cached in this run for
-	// this account.
-	sessionToken, ok := c.Onepassword.sessionTokens[args.account]
-	if ok {
-		return sessionToken, nil
-	}
-
-	// If no account has been given then look for any session tokens in the
-	// environment.
-	if args.account == "" {
-		var environ []string
-		if c.Onepassword.environFunc != nil {
-			environ = c.Onepassword.environFunc()
-		} else {
-			environ = os.Environ()
-		}
-		sessionToken = onepasswordUniqueSessionToken(environ)
-		if sessionToken != "" {
-			return sessionToken, nil
-		}
-	}
-
-	var commandArgs []string
-
-	if args.account == "" {
-		commandArgs = []string{"signin", "--raw"}
-	} else {
-		sessionToken = os.Getenv("OP_SESSION_" + args.account)
-
-		switch {
-		case c.Onepassword.version.Major == 1:
-			commandArgs = []string{"signin", args.account, "--raw"}
-		case c.Onepassword.version.Major >= 2:
-			commandArgs = []string{"signin", "--account", args.account, "--raw"}
-		default:
-			panic(&unsupportedVersionError{
-				version: c.Onepassword.version,
-			})
-		}
-	}
-
-	if sessionToken != "" {
-		commandArgs = append([]string{"--session", sessionToken}, commandArgs...)
-	}
-
-	//nolint:gosec
-	cmd := exec.Command(c.Onepassword.Command, commandArgs...)
-	cmd.Stdin = os.Stdin
-	cmd.Stderr = os.Stderr
-	output, err := chezmoilog.LogCmdOutput(cmd)
-	if err != nil {
-		return "", newCmdOutputError(cmd, output, err)
-	}
-	sessionToken = strings.TrimSpace(string(output))
-
-	// Cache the session token in memory, so we don't try to refresh it again
-	// for this run for this account.
-	if c.Onepassword.sessionTokens == nil {
-		c.Onepassword.sessionTokens = make(map[string]string)
-	}
-	c.Onepassword.sessionTokens[args.account] = sessionToken
-
-	return sessionToken, nil
-}
-
 func (c *Config) onepasswordItemV1(userArgs []string) (*onepasswordItemV1, error) {
 	args, err := newOnepasswordArgs([]string{"get", "item"}, userArgs)
 	if err != nil {
 		return nil, err
 	}
 
-	output, err := c.onepasswordOutput(args, withSessionToken)
+	output, err := c.onepasswordOutput(args)
 	if err != nil {
 		return nil, err
 	}
@@ -311,7 +228,7 @@ func (c *Config) onepasswordItemV2(userArgs []string) (*onepasswordItemV2, error
 		return nil, err
 	}
 
-	output, err := c.onepasswordOutput(args, withSessionToken)
+	output, err := c.onepasswordOutput(args)
 	if err != nil {
 		return nil, err
 	}
@@ -323,25 +240,14 @@ func (c *Config) onepasswordItemV2(userArgs []string) (*onepasswordItemV2, error
 	return &item, nil
 }
 
-func (c *Config) onepasswordOutput(args *onepasswordArgs, withSessionToken withSessionTokenType) ([]byte, error) {
+func (c *Config) onepasswordOutput(args *onepasswordArgs) ([]byte, error) {
 	key := strings.Join(args.args, "\x00")
 	if output, ok := c.Onepassword.outputCache[key]; ok {
 		return output, nil
 	}
 
-	commandArgs := args.args
-	if withSessionToken {
-		sessionToken, err := c.onepasswordGetOrRefreshSessionToken(args)
-		if err != nil {
-			return nil, err
-		}
-		if sessionToken != "" {
-			commandArgs = append([]string{"--session", sessionToken}, commandArgs...)
-		}
-	}
-
 	//nolint:gosec
-	cmd := exec.Command(c.Onepassword.Command, commandArgs...)
+	cmd := exec.Command(c.Onepassword.Command, args.args...)
 	cmd.Stdin = os.Stdin
 	cmd.Stderr = os.Stderr
 	output, err := chezmoilog.LogCmdOutput(cmd)
@@ -370,7 +276,7 @@ func (c *Config) onepasswordReadTemplateFunc(url string, args ...string) string 
 		panic(fmt.Errorf("expected 1 or 2 arguments, got %d", len(args)))
 	}
 
-	output, err := c.onepasswordOutput(onepasswordArgs, withSessionToken)
+	output, err := c.onepasswordOutput(onepasswordArgs)
 	if err != nil {
 		panic(err)
 	}
@@ -385,7 +291,7 @@ func (c *Config) onepasswordVersion() (*semver.Version, error) {
 	args := &onepasswordArgs{
 		args: []string{"--version"},
 	}
-	output, err := c.onepasswordOutput(args, withoutSessionToken)
+	output, err := c.onepasswordOutput(args)
 	if err != nil {
 		c.Onepassword.versionErr = err
 		return nil, c.Onepassword.versionErr
@@ -431,20 +337,4 @@ func newOnepasswordArgs(baseArgs, userArgs []string) (*onepasswordArgs, error) {
 		a.args = append(a.args, "--account", a.account)
 	}
 	return a, nil
-}
-
-// onepasswordUniqueSessionToken will look for any session tokens in the
-// environment. If it finds exactly one then it will return it.
-func onepasswordUniqueSessionToken(environ []string) string {
-	var token string
-	for _, env := range environ {
-		key, value, found := strings.Cut(env, "=")
-		if found && strings.HasPrefix(key, "OP_SESSION_") {
-			if token != "" {
-				return ""
-			}
-			token = value
-		}
-	}
-	return token
 }

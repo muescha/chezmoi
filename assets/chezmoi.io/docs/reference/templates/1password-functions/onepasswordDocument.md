@@ -10,8 +10,7 @@ multiple times with the same *uuid* will only invoke `op` once. If the optional
 can significantly improve performance. If the optional *account-name* is
 supplied, it will be passed along to the `op get` call, which will help it look
 in the right account, in case you have multiple accounts (e.g., personal and
-work accounts). If there is no valid session in the environment, by default you
-will be interactively prompted to sign in.
+work accounts).
 
 !!! example
 

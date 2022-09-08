@@ -7,9 +7,6 @@ is passed to `op item get $UUID --format json`, the output from `op` is parsed
 as JSON, and each element of `details.sections` are iterated over and any
 `fields` are returned as a map indexed by each field's `n`.
 
-If there is no valid session in the environment, by default you will be
-interactively prompted to sign in.
-
 !!! example
 
     The result of

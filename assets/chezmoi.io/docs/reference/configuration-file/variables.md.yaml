@@ -208,10 +208,6 @@ sections:
     command:
       default: "`op`"
       description: "1Password CLI command"
-    prompt:
-      type: "bool"
-      default: "`true`"
-      description: "Prompt for sign-in when no valid session is available"
   pass:
     command:
       default: "`pass`"

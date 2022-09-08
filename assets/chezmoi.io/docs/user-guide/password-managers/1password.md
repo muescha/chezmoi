@@ -169,24 +169,3 @@ $ chezmoi execute-template "{{ onepasswordItemFields \"$UUID\" | toJson }}" | jq
     the template language to remove any whitespace before and after the
     substitution. This removes any trailing newline added by your editor when
     saving the template.
-
-## Sign-in prompt
-
-chezmoi will verify the availability and validity of a session token in the
-current environment. If it is missing or expired, you will be interactively
-prompted to sign-in again.
-
-In the past chezmoi used to simply exit with an error when no valid session was
-available. If you'd like to restore this behavior, set the the
-`onepassword.prompt` configuration variable to `false`, for example:
-
-```toml title="~/.config/chezmoi/chezmoi.toml"
-[onepassword]
-    prompt = false
-```
-
-!!! danger
-
-    Do not use the prompt on shared machines. A session token verified or
-    acquired interactively will be passed to the 1Password CLI through a
-    command line parameter, which is visible to other users of the same system.

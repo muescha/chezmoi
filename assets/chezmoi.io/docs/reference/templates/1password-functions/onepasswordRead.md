@@ -6,9 +6,6 @@ CLI](https://support.1password.com/command-line-getting-started/) (`op`). *url*
 is passed to `op read $URL`. If *account* is specified, the extra arguments
 `--account $ACCOUNT` are passed to `op`.
 
-If there is no valid session in the environment, by default you will be
-interactively prompted to sign in.
-
 !!! example
 
     The result of

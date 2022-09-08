@@ -12,9 +12,6 @@ supplied, it will be passed along to the `op item get` call, which will help it
 look in the right account, in case you have multiple accounts (e.g., personal
 and work accounts).
 
-If there is no valid session in the environment, by default you will be
-interactively prompted to sign in.
-
 !!! example
 
     ```

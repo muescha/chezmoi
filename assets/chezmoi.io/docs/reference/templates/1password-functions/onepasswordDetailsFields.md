@@ -5,9 +5,7 @@
 CLI](https://support.1password.com/command-line-getting-started/) (`op`).
 *uuid* is passed to `op get item $UUID`, the output from `op` is parsed as
 JSON, and elements of `details.fields` are returned as a map indexed by each
-field's `id` (if set) or `label` (if set and `id` is not present). If there is
-no valid session in the environment, by default you will be interactively
-prompted to sign in.
+field's `id` (if set) or `label` (if set and `id` is not present).
 
 !!! info
 
