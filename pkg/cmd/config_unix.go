@@ -4,8 +4,6 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -19,6 +17,7 @@ func newPasswordTextInputModel(prompt string) passwordTextInputModel {
 	textInput.Prompt = prompt
 	textInput.Placeholder = "password"
 	textInput.EchoMode = textinput.EchoNone
+	textInput.Focus()
 	return passwordTextInputModel{
 		textInput: textInput,
 	}
@@ -29,7 +28,6 @@ func (m passwordTextInputModel) Init() tea.Cmd {
 }
 
 func (m passwordTextInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	fmt.Printf("msg=%+v\n", msg)
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.Type {
@@ -39,7 +37,6 @@ func (m passwordTextInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 	var cmd tea.Cmd
 	m.textInput, cmd = m.textInput.Update(msg)
-	fmt.Printf("m=%+v\n", m)
 	return m, cmd
 }
 
@@ -62,13 +59,14 @@ func (c *Config) readPassword(prompt string) (password string, err error) {
 		return c.readPINEntry(prompt)
 	}
 
-	m := newPasswordTextInputModel(prompt)
-	p := tea.NewProgram(m)
-	if err := p.Start(); err != nil {
+	program := tea.NewProgram(newPasswordTextInputModel(prompt))
+	model, err := program.StartReturningModel()
+	if err != nil {
 		return "", err
 	}
-	fmt.Printf("value=%q\n", m.Value())
-	return m.Value(), nil
+	//nolint:forcetypeassert
+	value := model.(passwordTextInputModel).Value()
+	return value, nil
 }
 
 func (c *Config) windowsVersion() (map[string]any, error) {
