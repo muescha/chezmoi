@@ -4,12 +4,52 @@
 package cmd
 
 import (
-	"errors"
-	"os"
+	"fmt"
 
-	"go.uber.org/multierr"
-	"golang.org/x/term"
+	"github.com/charmbracelet/bubbles/textinput"
+	tea "github.com/charmbracelet/bubbletea"
 )
+
+type passwordTextInputModel struct {
+	textInput textinput.Model
+}
+
+func newPasswordTextInputModel(prompt string) passwordTextInputModel {
+	textInput := textinput.New()
+	textInput.Prompt = prompt
+	textInput.Placeholder = "password"
+	textInput.EchoMode = textinput.EchoNone
+	return passwordTextInputModel{
+		textInput: textInput,
+	}
+}
+
+func (m passwordTextInputModel) Init() tea.Cmd {
+	return textinput.Blink
+}
+
+func (m passwordTextInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	fmt.Printf("msg=%+v\n", msg)
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.Type {
+		case tea.KeyEnter, tea.KeyCtrlC, tea.KeyEsc:
+			return m, tea.Quit
+		}
+	}
+	var cmd tea.Cmd
+	m.textInput, cmd = m.textInput.Update(msg)
+	fmt.Printf("m=%+v\n", m)
+	return m, cmd
+}
+
+func (m passwordTextInputModel) Value() string {
+	return m.textInput.Value()
+}
+
+func (m passwordTextInputModel) View() string {
+	return m.textInput.View()
+}
 
 // readPassword reads a password.
 func (c *Config) readPassword(prompt string) (password string, err error) {
@@ -22,23 +62,13 @@ func (c *Config) readPassword(prompt string) (password string, err error) {
 		return c.readPINEntry(prompt)
 	}
 
-	var tty *os.File
-	if tty, err = os.OpenFile("/dev/tty", os.O_RDWR, 0); err != nil {
-		return
+	m := newPasswordTextInputModel(prompt)
+	p := tea.NewProgram(m)
+	if err := p.Start(); err != nil {
+		return "", err
 	}
-	defer multierr.AppendInvoke(&err, multierr.Close(tty))
-	if _, err = tty.Write([]byte(prompt)); err != nil {
-		return
-	}
-	var passwordBytes []byte
-	if passwordBytes, err = term.ReadPassword(int(tty.Fd())); err != nil && !errors.Is(err, term.ErrPasteIndicator) {
-		return
-	}
-	if _, err = tty.Write([]byte{'\n'}); err != nil {
-		return
-	}
-	password = string(passwordBytes)
-	return
+	fmt.Printf("value=%q\n", m.Value())
+	return m.Value(), nil
 }
 
 func (c *Config) windowsVersion() (map[string]any, error) {
