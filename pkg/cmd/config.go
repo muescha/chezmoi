@@ -1861,7 +1861,7 @@ func (c *Config) promptChoice(prompt string, choices []string) (string, error) {
 	promptWithChoices := fmt.Sprintf("%s [%s]? ", prompt, strings.Join(choices, ","))
 	abbreviations := uniqueAbbreviations(choices)
 	for {
-		line, err := c.readLine(promptWithChoices)
+		line, err := c.readString(promptWithChoices)
 		if err != nil {
 			return "", err
 		}
@@ -1888,22 +1888,6 @@ func (c *Config) readConfig() error {
 		return err
 	}
 	return nil
-}
-
-// readLine reads a line from stdin, trimming leading and trailing whitespace.
-func (c *Config) readLine(prompt string) (string, error) {
-	_, err := c.stdout.Write([]byte(prompt))
-	if err != nil {
-		return "", err
-	}
-	if c.bufioReader == nil {
-		c.bufioReader = bufio.NewReader(c.stdin)
-	}
-	line, err := c.bufioReader.ReadString('\n')
-	if err != nil {
-		return "", err
-	}
-	return strings.TrimSpace(line), nil
 }
 
 // run runs name with args in dir.

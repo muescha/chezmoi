@@ -152,7 +152,7 @@ func (c *Config) promptStringOnceInitTemplateFunc(m map[string]any, key, prompt 
 func (c *Config) promptString(prompt string, args ...string) string {
 	switch len(args) {
 	case 0:
-		value, err := c.readLine(prompt + "? ")
+		value, err := c.readString(prompt + "? ")
 		if err != nil {
 			panic(err)
 		}
@@ -160,7 +160,7 @@ func (c *Config) promptString(prompt string, args ...string) string {
 	case 1:
 		defaultStr := strings.TrimSpace(args[0])
 		promptStr := prompt + " (default " + strconv.Quote(defaultStr) + ")? "
-		switch value, err := c.readLine(promptStr); {
+		switch value, err := c.readString(promptStr); {
 		case err != nil:
 			panic(err)
 		case value == "":
